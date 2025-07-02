@@ -1,142 +1,193 @@
 package com.hostelhive.hostelhive.Service;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.text.SimpleDateFormat;
 import java.util.Base64;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class MpesaService {
 
-    @Value("${mpesa.consumer.key}")
-    private String consumerKey;
+    @Value("${mpesa.api.url:https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest}")
+    private String mpesaApiUrl;
 
-    @Value("${mpesa.consumer.secret}")
-    private String consumerSecret;
+    @Value("${mpesa.shortcode:174379}")
+    private String shortcode;
 
-    @Value("${mpesa.shortcode}")
-    private String shortCode;
-
-    @Value("${mpesa.passkey}")
+    @Value("${mpesa.passkey:bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919}")
     private String passKey;
 
-    @Value("${mpesa.callback.url}")
+    @Value("${mpesa.consumer.key:TVAsWnu2XDw6S26pNtzhbxMtHpAZuc1flyCT5OtiL5GIUUYm}")
+    private String consumerKey;
+
+    @Value("${mpesa.consumer.secret:lgA0hTpzsmJnZFukGAps4YmxhTlIdymrs4YgVYAnZ2BwQYRfhAfgZBh8G97ECKkR}")
+    private String consumerSecret;
+
+    @Value("${mpesa.callback.url:https://<your-ngrok-subdomain>.ngrok.io/api/payments/handleCallback}")
     private String callbackUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    public String initiateStkPush(String phoneNumber, double amount, String accountReference, String transactionDesc) {
+        String requestPayload = createStkPushRequestPayload(phoneNumber, amount, accountReference, transactionDesc);
+        String accessToken = "Bearer " + getAccessToken();
 
-    /**
-     * Generate access token for M-Pesa API
-     * @return access token
-     */
-    public String getAccessToken() {
-        String credentials = consumerKey + ":" + consumerSecret;
-        String encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes());
+        if (accessToken == null || accessToken.equals("Bearer null")) {
+            throw new RuntimeException("Failed to obtain M-PESA access token");
+        }
+
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + encodedCredentials);
+        headers.set("Content-Type", "application/json");
+        headers.set("Authorization", accessToken);
 
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-        ResponseEntity<Map> response = restTemplate.exchange(
-                "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
-                HttpMethod.GET, entity, Map.class);
+        System.out.println("============>> Token ===========> " + accessToken);
+        System.out.println("============>> Headers ===========> " + headers.toString());
+        System.out.println("============>> Payload ===========> " + requestPayload);
 
-        return (String) response.getBody().get("access_token");
+        HttpEntity<String> requestEntity = new HttpEntity<>(requestPayload, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.exchange(
+            mpesaApiUrl,
+            HttpMethod.POST,
+            requestEntity,
+            String.class
+        );
+
+        String responseBody = response.getBody();
+        System.out.println("============>> Response ===========> " + responseBody);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("M-PESA API request failed: " + responseBody);
+        }
+
+        return responseBody;
     }
 
-    /**
-     * Generate password for STK Push
-     * @return encoded password
-     */
-    private String generatePassword() {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String strToEncode = shortCode + passKey + timestamp;
+    public String initiateB2CDisbursement(String phoneNumber, double amount, String remarks) {
+        // Implement B2C API call (e.g., https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest)
+        String b2cUrl = "https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest";
+        String requestPayload = createB2CRequestPayload(phoneNumber, amount, remarks);
+        String accessToken = "Bearer " + getAccessToken();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Authorization", accessToken);
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(requestPayload, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.exchange(
+            b2cUrl,
+            HttpMethod.POST,
+            requestEntity,
+            String.class
+        );
+
+        return response.getBody();
+    }
+
+    public Map<String, Object> queryTransactionStatus(String transactionId, String transactionType) {
+        String queryUrl = "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query";
+        String accessToken = "Bearer " + getAccessToken();
+        Map<String, String> passwordData = generatePassword();
+        String queryPayload = createQueryRequestPayload(transactionId, passwordData);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Authorization", accessToken);
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(queryPayload, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.exchange(
+            queryUrl,
+            HttpMethod.POST,
+            requestEntity,
+            String.class
+        );
+
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return new JSONObject(response.getBody()).toMap();
+        }
+        return null;
+    }
+
+    private String createStkPushRequestPayload(String phoneNumber, double amount, String accountReference, String transactionDesc) {
+        Map<String, String> password = generatePassword();
+        return "{"
+                + "\"BusinessShortCode\":\"" + shortcode.trim() + "\","
+                + "\"Password\":\"" + password.get("password") + "\","
+                + "\"Timestamp\":\"" + password.get("timestamp") + "\","
+                + "\"TransactionType\":\"CustomerPayBillOnline\","
+                + "\"Amount\":" + amount + ","
+                + "\"PartyA\":\"" + phoneNumber + "\","
+                + "\"PartyB\":\"" + shortcode.trim() + "\","
+                + "\"PhoneNumber\":\"" + phoneNumber + "\","
+                + "\"CallBackURL\":\"" + callbackUrl + "\","
+                + "\"AccountReference\":\"" + accountReference + "\","
+                + "\"TransactionDesc\":\"" + transactionDesc + "\""
+                + "}";
+    }
+
+    private String createB2CRequestPayload(String phoneNumber, double amount, String remarks) {
+        Map<String, String> password = generatePassword();
+        return "{"
+                + "\"InitiatorName\":\"testapi\","
+                + "\"SecurityCredential\":\"" + password.get("password") + "\","
+                + "\"CommandID\":\"BusinessPayment\","
+                + "\"Amount\":" + amount + ","
+                + "\"PartyA\":\"" + shortcode.trim() + "\","
+                + "\"PartyB\":\"" + phoneNumber + "\","
+                + "\"Remarks\":\"" + remarks + "\","
+                + "\"QueueTimeOutURL\":\"" + callbackUrl + "/timeout\","
+                + "\"ResultURL\":\"" + callbackUrl + "/result\""
+                + "}";
+    }
+
+    private String createQueryRequestPayload(String transactionId, Map<String, String> passwordData) {
+        return "{"
+                + "\"BusinessShortCode\":\"" + shortcode.trim() + "\","
+                + "\"Password\":\"" + passwordData.get("password") + "\","
+                + "\"Timestamp\":\"" + passwordData.get("timestamp") + "\","
+                + "\"CheckoutRequestID\":\"" + transactionId + "\""
+                + "}";
+    }
+
+    private String getAccessToken() {
+        String tokenUrl = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth(consumerKey, consumerSecret);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(strToEncode.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(bytes);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error generating password", e);
+            ResponseEntity<String> response = new RestTemplate().exchange(tokenUrl, HttpMethod.GET, entity, String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                JSONObject jsonResponse = new JSONObject(response.getBody());
+                return jsonResponse.getString("access_token");
+            } else {
+                System.err.println("Failed to get access token: " + response.getStatusCode() + " - " + response.getBody());
+                throw new RuntimeException("Failed to get access token: " + response.getBody());
+            }
+        } catch (Exception e) {
+            System.err.println("Exception while fetching access token: " + e.getMessage());
+            throw new RuntimeException("Exception while fetching access token", e);
         }
     }
 
-    /**
-     * Initiate STK Push payment
-     * @param phoneNumber student's phone number (e.g., 254712345678)
-     * @param amount amount to pay
-     * @param accountReference reference for the transaction
-     * @param transactionDesc description of the transaction
-     * @return STK Push response
-     */
-    public String initiateStkPush(String phoneNumber, double amount, String accountReference, String transactionDesc) {
-        String accessToken = getAccessToken();
-        String password = generatePassword();
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("BusinessShortCode", shortCode);
-        body.add("Password", password);
-        body.add("Timestamp", timestamp);
-        body.add("TransactionType", "CustomerPayBillOnline");
-        body.add("Amount", String.valueOf(amount));
-        body.add("PartyA", phoneNumber); // Should start with 254 for Kenya
-        body.add("PartyB", shortCode);
-        body.add("PhoneNumber", phoneNumber);
-        body.add("CallBackURL", callbackUrl);
-        body.add("AccountReference", accountReference);
-        body.add("TransactionDesc", transactionDesc);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + accessToken);
-
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.exchange(
-                "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-                HttpMethod.POST, entity, Map.class);
-
-        return response.getBody().toString();
+    private String getCurrentTimestamp() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+        return sdf.format(new Date());
     }
 
-    /**
-     * Initiate B2C disbursement to manager
-     * @param phoneNumber manager's phone number
-     * @param amount amount to disburse
-     * @param remarks remarks for the transaction
-     * @return B2C response
-     */
-    public String initiateB2CDisbursement(String phoneNumber, double amount, String remarks) {
-        String accessToken = getAccessToken();
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("Initiator", "hostelhive");
-        body.add("SecurityCredential", "iKZAyoTIKbIHo4gpsTPCeqDR2kBx+3qDnKSuD6Mlkmk8pFmBW0NubGgOJvDYGWSTxakg99rSqAWj3L1Gr5pbqFNvts3qE2sX6z+nOROp+l0Uygkdc0ty1a3Sd6vuzRxMA0qOXPGkFH73bKvyAiL30Vsv3q2W7WxxQQjwtcVy+YEp+4Yzhip1VJvoD81ybHV5lpLd4+SToW9YB1+J7TgFV6OPuTcahL5qrl1WF9gj7GZSCkdQKWD/DgBNtI3tdvH/xOfU56kPMiO8XYOIeIMh380beDhwnm8gFCSNsjyH03KTcSd3fKGk7ojndFJNlicFSs3RHce9xX8Tap4VlAk0Zw==");
-        body.add("CommandID", "SalaryPayment");
-        body.add("Amount", String.valueOf(amount));
-        body.add("PartyA", shortCode);
-        body.add("PartyB", phoneNumber);
-        body.add("Remarks", remarks);
-        body.add("QueueTimeOutURL", callbackUrl);
-        body.add("ResultURL", callbackUrl);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + accessToken);
-
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.exchange(
-                "https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest",
-                HttpMethod.POST, entity, Map.class);
-
-        return response.getBody().toString();
+    private Map<String, String> generatePassword() {
+        String timestamp = getCurrentTimestamp();
+        String password = shortcode.trim() + passKey.trim() + timestamp;
+        String encodedPassword = Base64.getEncoder().encodeToString(password.getBytes());
+        return new HashMap<>(Map.of("timestamp", timestamp, "password", encodedPassword));
     }
 }

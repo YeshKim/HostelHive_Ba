@@ -1,23 +1,29 @@
 package com.hostelhive.hostelhive.Service;
 
 import com.hostelhive.hostelhive.models.Payment;
+import com.hostelhive.hostelhive.models.Transaction;
 import com.hostelhive.hostelhive.repository.PaymentRepo;
+import com.hostelhive.hostelhive.repository.TransactionRepo;
 import com.hostelhive.hostelhive.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
 public class PaymentService {
     private final PaymentRepo paymentRepo;
+    private final TransactionRepo transactionRepo;
     private final MpesaService mpesaService;
 
     @Autowired
-    public PaymentService(PaymentRepo paymentRepo, MpesaService mpesaService) {
+    public PaymentService(PaymentRepo paymentRepo, TransactionRepo transactionRepo, MpesaService mpesaService) {
         this.paymentRepo = paymentRepo;
+        this.transactionRepo = transactionRepo;
         this.mpesaService = mpesaService;
     }
 
@@ -45,13 +51,30 @@ public class PaymentService {
 
         payment.setTransactionId(transactionId);
         payment.setStatus(status);
-        return paymentRepo.save(payment);
+        Payment updatedPayment = paymentRepo.save(payment);
+
+        // Record transaction
+        Transaction transaction = new Transaction(paymentId, transactionId, status, payment.getAmount());
+        transactionRepo.save(transaction);
+
+        return updatedPayment;
     }
 
     public String initiateStudentPayment(Long bookingId, String phoneNumber, double amount) {
-        Payment payment = new Payment(bookingId, amount);
-        payment = paymentRepo.save(payment);
-        return mpesaService.initiateStkPush(phoneNumber, amount, "Booking_" + payment.getId(), "Hostel Booking Payment");
+        try {
+            System.out.println("Initiating payment - bookingId: " + bookingId + ", phoneNumber: " + phoneNumber + ", amount: " + amount);
+            Payment payment = new Payment(bookingId, amount);
+            System.out.println("Payment object created: " + payment);
+            payment = paymentRepo.save(payment);
+            System.out.println("Payment saved with id: " + payment.getId());
+            String response = mpesaService.initiateStkPush(phoneNumber, amount, "Booking_" + payment.getId(), "Hostel Booking Payment");
+            System.out.println("STK Push response: " + response);
+            return response;
+        } catch (Exception e) {
+            System.err.println("Error in initiateStudentPayment: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to ensure the 500 error includes the stack trace
+        }
     }
 
     public String disburseToManager(Long paymentId, String phoneNumber, double amount) {
@@ -74,9 +97,24 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public Payment getPaymentByTransactionId(String transactionId) {
-        return paymentRepo.findAll().stream()
-                .filter(p -> p.getTransactionId() != null && p.getTransactionId().equals(transactionId))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with transaction ID: " + transactionId));
+        return paymentRepo.findByTransactionId(transactionId);
+    }
+
+    @Scheduled(fixedRate = 10000) // Runs every 10 seconds
+    public void checkPaymentStatuses() {
+        List<Payment> pendingPayments = paymentRepo.findByStatus("PENDING");
+        for (Payment payment : pendingPayments) {
+            if (payment.getTransactionId() != null) {
+                Map<String, Object> response = mpesaService.queryTransactionStatus(payment.getTransactionId(), "STK");
+                if (response != null && response.containsKey("Result")) {
+                    Map<String, Object> result = (Map<String, Object>) response.get("Result");
+                    String resultCode = result.get("ResultCode").toString();
+                    String newStatus = "0".equals(resultCode) ? "COMPLETED" : "FAILED";
+                    if (!payment.getStatus().equals(newStatus)) {
+                        updatePaymentStatus(payment.getId(), payment.getTransactionId(), newStatus);
+                    }
+                }
+            }
+        }
     }
 }
