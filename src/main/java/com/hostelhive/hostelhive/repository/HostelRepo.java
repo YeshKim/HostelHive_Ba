@@ -46,4 +46,26 @@ public interface HostelRepo extends JpaRepository<Hostel, Long> {
      */
     @Query("SELECT h FROM Hostel h WHERE h.isVerified = true")
     List<Hostel> findVerifiedHostels();
+
+    /**
+     * Find hostels with price per month less than or equal to the specified value
+     * @param maxPrice the maximum price per month
+     * @return List of hostels with price per month less than or equal to maxPrice
+     */
+    List<Hostel> findByPricePerMonthLessThanEqual(Double maxPrice);
+
+    /**
+     * Find hostels with price per month greater than or equal to the specified value
+     * @param minPrice the minimum price per month
+     * @return List of hostels with price per month greater than or equal to minPrice
+     */
+    List<Hostel> findByPricePerMonthGreaterThanEqual(Double minPrice);
+
+    /**
+     * Find hostels with price per month within the specified range
+     * @param minPrice the minimum price per month
+     * @param maxPrice the maximum price per month
+     * @return List of hostels with price per month between minPrice and maxPrice
+     */
+    List<Hostel> findByPricePerMonthBetween(Double minPrice, Double maxPrice);
 }

@@ -114,4 +114,23 @@ public class HostelService {
     public List<Hostel> getVerifiedHostels() {
         return hostelRepo.findVerifiedHostels();
     }
+
+    /**
+     * Get hostels by price range
+     * @param minPrice the minimum price per month (optional)
+     * @param maxPrice the maximum price per month (optional)
+     * @return list of hostels within the specified price range
+     */
+    @Transactional(readOnly = true)
+    public List<Hostel> getHostelsByPriceRange(Double minPrice, Double maxPrice) {
+        if (minPrice == null && maxPrice == null) {
+            return hostelRepo.findAll();
+        } else if (minPrice == null) {
+            return hostelRepo.findByPricePerMonthLessThanEqual(maxPrice);
+        } else if (maxPrice == null) {
+            return hostelRepo.findByPricePerMonthGreaterThanEqual(minPrice);
+        } else {
+            return hostelRepo.findByPricePerMonthBetween(minPrice, maxPrice);
+        }
+    }
 }
