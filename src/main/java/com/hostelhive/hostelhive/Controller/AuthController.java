@@ -1,120 +1,50 @@
 package com.hostelhive.hostelhive.Controller;
 
 import com.hostelhive.hostelhive.models.User;
-import com.hostelhive.hostelhive.repository.UserRepo;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import com.hostelhive.hostelhive.DTOs.LoginUserDto;
+import com.hostelhive.hostelhive.DTOs.RegisterUserDto;
+import com.hostelhive.hostelhive.responses.LoginResponse;
+import com.hostelhive.hostelhive.Service.AuthenticationService;
+import com.hostelhive.hostelhive.Service.JwtService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Optional;
-
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"})
+@CrossOrigin(origins = {
+	    "http://localhost:3000",
+	    "http://127.0.0.1:5500",
+	    "http://localhost:5500"
+	})
+@RequestMapping("/auth")
 @RestController
-@RequestMapping("/api/auth")
 public class AuthController {
+    private final JwtService jwtService;
+    
+    private final AuthenticationService authenticationService;
 
-    @Autowired
-    private UserRepo userRepo;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    // Registration endpoints
-    @PostMapping("/register-student")
-    public ResponseEntity<String> registerStudent(@RequestBody User user) {
-        if (userRepo.findByEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
-        }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("ROLE_STUDENT");
-        userRepo.save(user);
-        return ResponseEntity.ok("Student registered successfully");
+    public AuthController(JwtService jwtService, AuthenticationService authenticationService) {
+        this.jwtService = jwtService;
+        this.authenticationService = authenticationService;
     }
 
-    @PostMapping("/register-manager")
-    public ResponseEntity<String> registerManager(@RequestBody User user) {
-        if (userRepo.findByEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
-        }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("ROLE_MANAGER");
-        userRepo.save(user);
-        return ResponseEntity.ok("Manager registered successfully");
+    @PostMapping("/signup")
+    public ResponseEntity<User> register(@RequestBody RegisterUserDto registerUserDto) {
+        User registeredUser = authenticationService.signup(registerUserDto);
+
+        return ResponseEntity.ok(registeredUser);
     }
 
-    @PostMapping("/register-admin")
-    public ResponseEntity<String> registerAdmin(@RequestBody User user) {
-        if (userRepo.findByEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
-        }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("ROLE_ADMIN");
-        userRepo.save(user);
-        return ResponseEntity.ok("Admin registered successfully");
-    }
-
-    // Role-specific login endpoints
-    @PostMapping("/login-student")
-    public ResponseEntity<String> loginStudent(@RequestBody User user) {
-        return authenticateUser(user, "ROLE_STUDENT", "Student");
-    }
-
-    @PostMapping("/login-manager")
-    public ResponseEntity<String> loginManager(@RequestBody User user) {
-        return authenticateUser(user, "ROLE_MANAGER", "Manager");
-    }
-
-    @PostMapping("/login-admin")
-    public ResponseEntity<String> loginAdmin(@RequestBody User user) {
-        return authenticateUser(user, "ROLE_ADMIN", "Admin");
-    }
-
-    // Generic login endpoint (optional - for backward compatibility)
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody User user) {
-        Optional<User> existingUser = userRepo.findByEmail(user.getEmail());
-        
-        if (existingUser.isPresent() && 
-            passwordEncoder.matches(user.getPassword(), existingUser.get().getPassword())) {
-            return ResponseEntity.ok("Login successful - Role: " + existingUser.get().getRole());
-        }
-        
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-    }
+    public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto) {
+        User authenticatedUser = authenticationService.authenticate(loginUserDto);
 
-    // Private helper method for role-specific authentication
-    private ResponseEntity<String> authenticateUser(User loginRequest, String expectedRole, String userType) {
-        try {
-            // Find user by email
-            Optional<User> existingUser = userRepo.findByEmail(loginRequest.getEmail());
-            
-            if (existingUser.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("User not found");
-            }
-            
-            User user = existingUser.get();
-            
-            // Check password
-            if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid password");
-            }
-            
-            // Check role
-            if (!expectedRole.equals(user.getRole())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Access denied: You don't have " + userType.toLowerCase() + " privileges");
-            }
-            
-            // Successful authentication
-            return ResponseEntity.ok(userType + " login successful");
-            
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Login failed: " + e.getMessage());
-        }
+        String jwtToken = jwtService.generateToken(authenticatedUser);
+
+        LoginResponse loginResponse = new LoginResponse().setToken(jwtToken).setExpiresIn(jwtService.getExpirationTime());
+
+        return ResponseEntity.ok(loginResponse);
     }
 }

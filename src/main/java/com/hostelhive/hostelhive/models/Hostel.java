@@ -50,7 +50,32 @@ public class Hostel {
 
     @ElementCollection
     @Column(name = "images_base64", columnDefinition = "text")
-    private List<String> imagesBase64 = new ArrayList<>(); // List of Base64-encoded images
+    private List<String> imagesBase64 = new ArrayList<>();
+
+    // Additional fields from your form
+    @Column(name = "property_type")
+    private String propertyType;
+
+    @Column(name = "total_rooms")
+    private Integer totalRooms;
+
+    @Column(name = "available_rooms")
+    private Integer availableRooms;
+
+    @Column(name = "room_type")
+    private String roomType;
+
+    @Column(name = "deposit_amount")
+    private Double depositAmount;
+
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
+    @Column(name = "alternate_phone")
+    private String alternatePhone;
+
+    @Column(name = "contact_email")
+    private String contactEmail;
 
     // Default constructor
     public Hostel() {}
@@ -153,6 +178,71 @@ public class Hostel {
         this.imagesBase64 = imagesBase64;
     }
 
+    // New getters and setters for additional fields
+    public String getPropertyType() {
+        return propertyType;
+    }
+
+    public void setPropertyType(String propertyType) {
+        this.propertyType = propertyType;
+    }
+
+    public Integer getTotalRooms() {
+        return totalRooms;
+    }
+
+    public void setTotalRooms(Integer totalRooms) {
+        this.totalRooms = totalRooms;
+    }
+
+    public Integer getAvailableRooms() {
+        return availableRooms;
+    }
+
+    public void setAvailableRooms(Integer availableRooms) {
+        this.availableRooms = availableRooms;
+    }
+
+    public String getRoomType() {
+        return roomType;
+    }
+
+    public void setRoomType(String roomType) {
+        this.roomType = roomType;
+    }
+
+    public Double getDepositAmount() {
+        return depositAmount;
+    }
+
+    public void setDepositAmount(Double depositAmount) {
+        this.depositAmount = depositAmount;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
+    }
+
+    public String getAlternatePhone() {
+        return alternatePhone;
+    }
+
+    public void setAlternatePhone(String alternatePhone) {
+        this.alternatePhone = alternatePhone;
+    }
+
+    public String getContactEmail() {
+        return contactEmail;
+    }
+
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
+    }
+
     @Override
     public String toString() {
         return "Hostel{" +
@@ -160,7 +250,14 @@ public class Hostel {
                 ", name='" + name + '\'' +
                 ", address='" + address + '\'' +
                 ", location='" + location + '\'' +
+                ", propertyType='" + propertyType + '\'' +
+                ", totalRooms=" + totalRooms +
+                ", availableRooms=" + availableRooms +
+                ", roomType='" + roomType + '\'' +
                 ", pricePerMonth=" + pricePerMonth +
+                ", depositAmount=" + depositAmount +
+                ", contactPhone='" + contactPhone + '\'' +
+                ", contactEmail='" + contactEmail + '\'' +
                 ", managerId=" + managerId +
                 ", isVerified=" + isVerified +
                 ", createdAt=" + createdAt +

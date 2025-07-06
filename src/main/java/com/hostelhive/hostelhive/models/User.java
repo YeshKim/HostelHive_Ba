@@ -41,6 +41,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @NotBlank(message = "Role is required")
     @Column(nullable = false)
     private String role; // e.g., "ROLE_STUDENT", "ROLE_MANAGER", "ROLE_ADMIN"
 
@@ -59,65 +60,78 @@ public class User implements UserDetails {
         this.role = role;
     }
 
-    // Getters and Setters
+    // Getters and Chainable Setters
+
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public User setId(Long id) {
         this.id = id;
+        return this;
     }
 
     public String getFullName() {
         return fullName;
     }
 
-    public void setFullName(String fullName) {
+    public User setFullName(String fullName) {
         this.fullName = fullName;
+        return this;
     }
 
     public String getEmail() {
         return email;
     }
 
-    public void setEmail(String email) {
+    public User setEmail(String email) {
         this.email = email;
+        return this;
     }
 
     public String getPhoneNumber() {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(String phoneNumber) {
+    public User setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+        return this;
     }
 
     public String getPassword() {
         return password;
     }
 
-    public void setPassword(String password) {
+    public User setPassword(String password) {
         this.password = password;
+        return this;
     }
 
     public String getRole() {
         return role;
     }
 
-    public void setRole(String role) {
+    public User setRole(String role) {
         this.role = role;
+        return this;
     }
 
     public LocalDateTime getRegisteredAt() {
         return registeredAt;
     }
 
-    public void setRegisteredAt(LocalDateTime registeredAt) {
+    public User setRegisteredAt(LocalDateTime registeredAt) {
         this.registeredAt = registeredAt;
+        return this;
     }
+
+    // UserDetails interface methods
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (role == null || role.isEmpty()) {
+            return Collections.emptyList();
+        }
         return Collections.singletonList(new SimpleGrantedAuthority(role));
     }
 
@@ -146,6 +160,7 @@ public class User implements UserDetails {
         return true;
     }
 
+    // toString method
     @Override
     public String toString() {
         return "User{" +

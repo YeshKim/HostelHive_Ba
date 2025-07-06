@@ -11,61 +11,37 @@ import java.util.Optional;
 
 @Repository
 public interface HostelRepo extends JpaRepository<Hostel, Long> {
-    /**
-     * Find hostel by name
-     * @param name the name to search for
-     * @return Optional containing the hostel if found
-     */
-    Optional<Hostel> findByName(String name);
-
-    /**
-     * Find hostels by location
-     * @param location the location to search for
-     * @return List of hostels matching the location
-     */
-    @Query("SELECT h FROM Hostel h WHERE LOWER(h.location) LIKE LOWER(CONCAT('%', :location, '%'))")
-    List<Hostel> findByLocationContainingIgnoreCase(@Param("location") String location);
-
-    /**
-     * Find hostels by manager ID
-     * @param managerId the manager ID to search for
-     * @return List of hostels managed by the manager
-     */
+    
+    // Existing methods
     List<Hostel> findByManagerId(Long managerId);
-
-    /**
-     * Check if hostel exists by name
-     * @param name the name to check
-     * @return true if hostel exists, false otherwise
-     */
-    boolean existsByName(String name);
-
-    /**
-     * Find verified hostels
-     * @return List of verified hostels
-     */
-    @Query("SELECT h FROM Hostel h WHERE h.isVerified = true")
-    List<Hostel> findVerifiedHostels();
-
-    /**
-     * Find hostels with price per month less than or equal to the specified value
-     * @param maxPrice the maximum price per month
-     * @return List of hostels with price per month less than or equal to maxPrice
-     */
-    List<Hostel> findByPricePerMonthLessThanEqual(Double maxPrice);
-
-    /**
-     * Find hostels with price per month greater than or equal to the specified value
-     * @param minPrice the minimum price per month
-     * @return List of hostels with price per month greater than or equal to minPrice
-     */
-    List<Hostel> findByPricePerMonthGreaterThanEqual(Double minPrice);
-
-    /**
-     * Find hostels with price per month within the specified range
-     * @param minPrice the minimum price per month
-     * @param maxPrice the maximum price per month
-     * @return List of hostels with price per month between minPrice and maxPrice
-     */
+    List<Hostel> findByLocation(String location);
+    List<Hostel> findByIsVerifiedTrue();
     List<Hostel> findByPricePerMonthBetween(Double minPrice, Double maxPrice);
+    
+    // New methods for additional fields
+    List<Hostel> findByRoomType(String roomType);
+    List<Hostel> findByPropertyType(String propertyType);
+    List<Hostel> findByAvailableRoomsGreaterThan(Integer availableRooms);
+    List<Hostel> findByTotalRoomsGreaterThanEqual(Integer totalRooms);
+    
+    // Combined search methods
+    List<Hostel> findByLocationAndRoomType(String location, String roomType);
+    List<Hostel> findByLocationAndPricePerMonthLessThanEqual(String location, Double maxPrice);
+    List<Hostel> findByRoomTypeAndPricePerMonthBetween(String roomType, Double minPrice, Double maxPrice);
+    
+    // Custom queries
+    @Query("SELECT h FROM Hostel h WHERE h.isVerified = true AND h.availableRooms > 0")
+    List<Hostel> findAvailableVerifiedHostels();
+    
+    @Query("SELECT h FROM Hostel h WHERE h.location = :location AND h.pricePerMonth <= :maxPrice AND h.availableRooms > 0")
+    List<Hostel> findAvailableHostelsByLocationAndMaxPrice(@Param("location") String location, @Param("maxPrice") Double maxPrice);
+    
+    @Query("SELECT h FROM Hostel h WHERE h.amenities LIKE %:amenity%")
+    List<Hostel> findByAmenityContaining(@Param("amenity") String amenity);
+    
+    @Query("SELECT h FROM Hostel h WHERE h.contactEmail = :email")
+    Optional<Hostel> findByContactEmail(@Param("email") String email);
+    
+    @Query("SELECT h FROM Hostel h WHERE h.contactPhone = :phone")
+    Optional<Hostel> findByContactPhone(@Param("phone") String phone);
 }
