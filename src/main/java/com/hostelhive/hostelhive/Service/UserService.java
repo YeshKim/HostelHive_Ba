@@ -1,4 +1,5 @@
 package com.hostelhive.hostelhive.Service;
+
 import com.hostelhive.hostelhive.models.User;
 import com.hostelhive.hostelhive.repository.UserRepo;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,13 @@ public class UserService {
 
     public List<User> allUsers() {
         List<User> users = new ArrayList<>();
-
         userRepo.findAll().forEach(users::add);
-
         return users;
     }
+
+    // ✅ New method to fetch users by role name
+    public List<User> getUsersByRole(String role) {
+        return userRepo.findByRole(role);
+    }
+
 }
