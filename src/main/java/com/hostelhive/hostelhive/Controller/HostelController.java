@@ -1,6 +1,9 @@
 package com.hostelhive.hostelhive.Controller;
 
+import com.hostelhive.hostelhive.models.Amenity;
 import com.hostelhive.hostelhive.models.Hostel;
+import com.hostelhive.hostelhive.models.HostelDTO;
+import com.hostelhive.hostelhive.Service.AmenityService;
 import com.hostelhive.hostelhive.Service.HostelService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,57 +22,77 @@ public class HostelController {
     @Autowired
     private HostelService hostelService;
 
+    @Autowired
+    private AmenityService amenityService;
+
+    // Create a new hostel
     @PostMapping("/post-hostel")
-    public ResponseEntity<?> createHostel(@Valid @RequestBody Hostel hostel) {
+    public ResponseEntity<?> createHostel(@Valid @RequestBody HostelDTO hostelDTO) {
         try {
             // Validate required fields
-            if (hostel.getName() == null || hostel.getName().trim().isEmpty()) {
+            if (hostelDTO.getName() == null || hostelDTO.getName().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Property name is required");
             }
-            
-            if (hostel.getAddress() == null || hostel.getAddress().trim().isEmpty()) {
+            if (hostelDTO.getAddress() == null || hostelDTO.getAddress().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Address is required");
             }
-            
-            if (hostel.getLocation() == null || hostel.getLocation().trim().isEmpty()) {
+            if (hostelDTO.getLocation() == null || hostelDTO.getLocation().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Location is required");
             }
-            
-            if (hostel.getPricePerMonth() == null || hostel.getPricePerMonth() <= 0) {
+            if (hostelDTO.getPricePerMonth() == null || hostelDTO.getPricePerMonth() <= 0) {
                 return ResponseEntity.badRequest().body("Valid price per month is required");
             }
-            
-            if (hostel.getManagerId() == null) {
+            if (hostelDTO.getManagerId() == null) {
                 return ResponseEntity.badRequest().body("Manager ID is required");
             }
-
-            // Validate room numbers
-            if (hostel.getTotalRooms() != null && hostel.getAvailableRooms() != null) {
-                if (hostel.getAvailableRooms() > hostel.getTotalRooms()) {
+            if (hostelDTO.getTotalRooms() != null && hostelDTO.getAvailableRooms() != null) {
+                if (hostelDTO.getAvailableRooms() > hostelDTO.getTotalRooms()) {
                     return ResponseEntity.badRequest().body("Available rooms cannot exceed total rooms");
                 }
             }
-
-            // Validate phone numbers format (optional)
-            if (hostel.getContactPhone() != null && !isValidPhoneNumber(hostel.getContactPhone())) {
+            if (hostelDTO.getContactPhone() != null && !isValidPhoneNumber(hostelDTO.getContactPhone())) {
                 return ResponseEntity.badRequest().body("Invalid contact phone format");
             }
-
-            // Set default values
-            if (hostel.getIsVerified() == null) {
-                hostel.setIsVerified(false);
+            // Validate and map amenities
+            List<String> amenityNames = hostelDTO.getAmenities();
+            if (amenityNames == null || amenityNames.isEmpty()) {
+                return ResponseEntity.badRequest().body("At least one amenity is required");
+            }
+            List<Amenity> amenities = amenityService.findByNames(amenityNames);
+            if (amenities.size() != amenityNames.size()) {
+                return ResponseEntity.badRequest().body("One or more amenities are invalid");
             }
 
-            // Save hostel
+            // Map DTO to Hostel entity
+            Hostel hostel = new Hostel();
+            hostel.setName(hostelDTO.getName());
+            hostel.setLocation(hostelDTO.getLocation());
+            hostel.setPropertyType(hostelDTO.getPropertyType());
+            hostel.setRoomType(hostelDTO.getRoomType());
+            hostel.setAddress(hostelDTO.getAddress());
+            hostel.setTotalRooms(hostelDTO.getTotalRooms());
+            hostel.setAvailableRooms(hostelDTO.getAvailableRooms());
+            hostel.setPricePerMonth(hostelDTO.getPricePerMonth());
+            hostel.setDepositAmount(hostelDTO.getDepositAmount());
+            hostel.setAmenities(amenities);
+            hostel.setDescription(hostelDTO.getDescription());
+            hostel.setContactPhone(hostelDTO.getContactPhone());
+            hostel.setAlternatePhone(hostelDTO.getAlternatePhone());
+            hostel.setContactEmail(hostelDTO.getContactEmail());
+            hostel.setImagesBase64(hostelDTO.getImagesBase64());
+            hostel.setManagerId(hostelDTO.getManagerId());
+            hostel.setIsVerified(hostelDTO.getIsVerified() != null ? hostelDTO.getIsVerified() : false);
+            hostel.setDistance(hostelDTO.getDistance() != null ? hostelDTO.getDistance() : 0.0);
+
             Hostel savedHostel = hostelService.save(hostel);
             return ResponseEntity.ok(savedHostel);
-            
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error creating hostel: " + e.getMessage());
         }
     }
 
+    // Get all hostels
     @GetMapping("/all")
     public ResponseEntity<List<Hostel>> getAllHostels() {
         try {
@@ -80,65 +103,123 @@ public class HostelController {
         }
     }
 
+    // Get hostel by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Hostel> getHostelById(@PathVariable Long id) {
+    public ResponseEntity<?> getHostelById(@PathVariable Long id) {
         try {
             Optional<Hostel> hostel = hostelService.findById(id);
             if (hostel.isPresent()) {
                 return ResponseEntity.ok(hostel.get());
             } else {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Hostel not found");
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving hostel: " + e.getMessage());
         }
     }
 
-    @GetMapping("/manager/{managerId}")
-    public ResponseEntity<List<Hostel>> getHostelsByManager(@PathVariable Long managerId) {
-        try {
-            List<Hostel> hostels = hostelService.findByManagerId(managerId);
-            return ResponseEntity.ok(hostels);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
-
+    // Update a hostel
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateHostel(@PathVariable Long id, @Valid @RequestBody Hostel hostel) {
+    public ResponseEntity<?> updateHostel(@PathVariable Long id, @Valid @RequestBody HostelDTO hostelDTO) {
         try {
             Optional<Hostel> existingHostel = hostelService.findById(id);
-            if (existingHostel.isPresent()) {
-                hostel.setId(id);
-                Hostel updatedHostel = hostelService.save(hostel);
-                return ResponseEntity.ok(updatedHostel);
-            } else {
-                return ResponseEntity.notFound().build();
+            if (!existingHostel.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Hostel not found");
             }
+
+            // Validate required fields
+            if (hostelDTO.getName() == null || hostelDTO.getName().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Property name is required");
+            }
+            if (hostelDTO.getAddress() == null || hostelDTO.getAddress().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Address is required");
+            }
+            if (hostelDTO.getLocation() == null || hostelDTO.getLocation().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Location is required");
+            }
+            if (hostelDTO.getPricePerMonth() == null || hostelDTO.getPricePerMonth() <= 0) {
+                return ResponseEntity.badRequest().body("Valid price per month is required");
+            }
+            if (hostelDTO.getManagerId() == null) {
+                return ResponseEntity.badRequest().body("Manager ID is required");
+            }
+            if (hostelDTO.getTotalRooms() != null && hostelDTO.getAvailableRooms() != null) {
+                if (hostelDTO.getAvailableRooms() > hostelDTO.getTotalRooms()) {
+                    return ResponseEntity.badRequest().body("Available rooms cannot exceed total rooms");
+                }
+            }
+            if (hostelDTO.getContactPhone() != null && !isValidPhoneNumber(hostelDTO.getContactPhone())) {
+                return ResponseEntity.badRequest().body("Invalid contact phone format");
+            }
+            // Validate and map amenities
+            List<String> amenityNames = hostelDTO.getAmenities();
+            if (amenityNames == null || amenityNames.isEmpty()) {
+                return ResponseEntity.badRequest().body("At least one amenity is required");
+            }
+            List<Amenity> amenities = amenityService.findByNames(amenityNames);
+            if (amenities.size() != amenityNames.size()) {
+                return ResponseEntity.badRequest().body("One or more amenities are invalid");
+            }
+
+            // Map DTO to Hostel entity
+            Hostel hostel = existingHostel.get();
+            hostel.setName(hostelDTO.getName());
+            hostel.setLocation(hostelDTO.getLocation());
+            hostel.setPropertyType(hostelDTO.getPropertyType());
+            hostel.setRoomType(hostelDTO.getRoomType());
+            hostel.setAddress(hostelDTO.getAddress());
+            hostel.setTotalRooms(hostelDTO.getTotalRooms());
+            hostel.setAvailableRooms(hostelDTO.getAvailableRooms());
+            hostel.setPricePerMonth(hostelDTO.getPricePerMonth());
+            hostel.setDepositAmount(hostelDTO.getDepositAmount());
+            hostel.setAmenities(amenities);
+            hostel.setDescription(hostelDTO.getDescription());
+            hostel.setContactPhone(hostelDTO.getContactPhone());
+            hostel.setAlternatePhone(hostelDTO.getAlternatePhone());
+            hostel.setContactEmail(hostelDTO.getContactEmail());
+            hostel.setImagesBase64(hostelDTO.getImagesBase64());
+            hostel.setManagerId(hostelDTO.getManagerId());
+            hostel.setIsVerified(hostelDTO.getIsVerified() != null ? hostelDTO.getIsVerified() : hostel.getIsVerified());
+            hostel.setDistance(hostelDTO.getDistance() != null ? hostelDTO.getDistance() : hostel.getDistance());
+
+            Hostel updatedHostel = hostelService.save(hostel);
+            return ResponseEntity.ok(updatedHostel);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error updating hostel: " + e.getMessage());
         }
     }
 
+    // Delete a hostel
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteHostel(@PathVariable Long id) {
         try {
-            if (hostelService.findById(id).isPresent()) {
-                hostelService.deleteById(id);
-                return ResponseEntity.ok().build();
-            } else {
-                return ResponseEntity.notFound().build();
+            Optional<Hostel> hostel = hostelService.findById(id);
+            if (!hostel.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Hostel not found");
             }
+            hostelService.deleteById(id);
+            return ResponseEntity.ok("Hostel deleted successfully");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error deleting hostel: " + e.getMessage());
         }
     }
 
-    // Helper method for phone validation
+    // Get hostels by manager ID
+    @GetMapping("/manager/{managerId}")
+    public ResponseEntity<?> getHostelsByManagerId(@PathVariable Long managerId) {
+        try {
+            List<Hostel> hostels = hostelService.findByManagerId(managerId);
+            return ResponseEntity.ok(hostels);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving hostels: " + e.getMessage());
+        }
+    }
+
     private boolean isValidPhoneNumber(String phone) {
-        // Basic validation for Kenyan phone numbers
-        return phone.matches("^\\+254[0-9]{9}$");
+        return phone != null && phone.matches("^\\+254[0-9]{9}$");
     }
 }

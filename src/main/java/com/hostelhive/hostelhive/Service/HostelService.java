@@ -1,17 +1,8 @@
 package com.hostelhive.hostelhive.Service;
 
 import com.hostelhive.hostelhive.models.Hostel;
-import com.hostelhive.hostelhive.models.User;
 import com.hostelhive.hostelhive.repository.HostelRepo;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -63,7 +54,6 @@ public class HostelService {
         hostelRepo.deleteById(id);
     }
 
-    // Business logic methods
     public boolean bookRoom(Long hostelId) {
         Optional<Hostel> hostelOpt = findById(hostelId);
         if (hostelOpt.isPresent()) {
@@ -81,7 +71,7 @@ public class HostelService {
         Optional<Hostel> hostelOpt = findById(hostelId);
         if (hostelOpt.isPresent()) {
             Hostel hostel = hostelOpt.get();
-            if (hostel.getAvailableRooms() != null && hostel.getTotalRooms() != null && 
+            if (hostel.getAvailableRooms() != null && hostel.getTotalRooms() != null &&
                 hostel.getAvailableRooms() < hostel.getTotalRooms()) {
                 hostel.setAvailableRooms(hostel.getAvailableRooms() + 1);
                 save(hostel);
@@ -89,5 +79,39 @@ public class HostelService {
             }
         }
         return false;
+    }
+
+    public List<Hostel> getHostelsByPriceRange(Double minPrice, Double maxPrice) {
+        return hostelRepo.findByPricePerMonthBetween(minPrice, maxPrice);
+    }
+
+    public List<Hostel> getHostelsByRoomType(List<String> roomTypes) {
+        return hostelRepo.findByRoomTypeIn(roomTypes);
+    }
+
+    public List<Hostel> getHostelsByAmenities(List<String> amenities) {
+        if (amenities == null || amenities.isEmpty()) {
+            return hostelRepo.findAll();
+        }
+        return hostelRepo.findByAmenitiesContainingAll(amenities, (long) amenities.size());
+    }
+
+    public List<Hostel> getHostelsByDistanceRange(Double minDistance, Double maxDistance) {
+        return hostelRepo.findByDistanceBetween(minDistance, maxDistance);
+    }
+
+    public List<Hostel> getHostelsByFilters(Double minPrice, Double maxPrice, List<String> roomTypes,
+                                            List<String> amenities, Double minDistance, Double maxDistance,
+                                            String location) {
+        return hostelRepo.findByFilters(
+                minPrice != null ? minPrice : null,
+                maxPrice != null ? maxPrice : null,
+                roomTypes != null && !roomTypes.isEmpty() ? roomTypes : null,
+                amenities != null && !amenities.isEmpty() ? amenities : null,
+                amenities != null && !amenities.isEmpty() ? (long) amenities.size() : null,
+                minDistance != null ? minDistance : null,
+                maxDistance != null ? maxDistance : null,
+                location
+        );
     }
 }

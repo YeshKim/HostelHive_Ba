@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -21,9 +22,12 @@ public class UserService {
         return users;
     }
 
-    // ✅ New method to fetch users by role name
+    
     public List<User> getUsersByRole(String role) {
         return userRepo.findByRole(role);
+    }
+    public Optional<User> getUserById(Long userId) {
+        return userRepo.findById(userId);
     }
 
 }

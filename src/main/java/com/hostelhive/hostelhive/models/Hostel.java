@@ -32,8 +32,13 @@ public class Hostel {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "amenities", columnDefinition = "text")
-    private String amenities;
+    @ManyToMany
+    @JoinTable(
+        name = "hostel_amenities",
+        joinColumns = @JoinColumn(name = "hostel_id"),
+        inverseJoinColumns = @JoinColumn(name = "amenity_id")
+    )
+    private List<Amenity> amenities = new ArrayList<>();
 
     @Column(name = "price_per_month", nullable = false)
     private Double pricePerMonth;
@@ -52,7 +57,6 @@ public class Hostel {
     @Column(name = "images_base64", columnDefinition = "text")
     private List<String> imagesBase64 = new ArrayList<>();
 
-    // Additional fields from your form
     @Column(name = "property_type")
     private String propertyType;
 
@@ -77,6 +81,10 @@ public class Hostel {
     @Column(name = "contact_email")
     private String contactEmail;
 
+    // New field for distance
+    @Column(name = "distance")
+    private Double distance; // Distance in kilometers to a reference point (e.g., university)
+
     // Default constructor
     public Hostel() {}
 
@@ -89,7 +97,7 @@ public class Hostel {
         this.managerId = managerId;
     }
 
-    // Getters and Setters
+    // Getters and Setters (existing ones unchanged)
     public Long getId() {
         return id;
     }
@@ -106,7 +114,7 @@ public class Hostel {
         this.name = name;
     }
 
-    public String getAddress() {
+    public String get_Address() {
         return address;
     }
 
@@ -130,11 +138,11 @@ public class Hostel {
         this.description = description;
     }
 
-    public String getAmenities() {
+    public List<Amenity> getAmenities() {
         return amenities;
     }
 
-    public void setAmenities(String amenities) {
+    public void setAmenities(List<Amenity> amenities) {
         this.amenities = amenities;
     }
 
@@ -178,7 +186,6 @@ public class Hostel {
         this.imagesBase64 = imagesBase64;
     }
 
-    // New getters and setters for additional fields
     public String getPropertyType() {
         return propertyType;
     }
@@ -243,6 +250,15 @@ public class Hostel {
         this.contactEmail = contactEmail;
     }
 
+    // New getter and setter for distance
+    public Double getDistance() {
+        return distance;
+    }
+
+    public void setDistance(Double distance) {
+        this.distance = distance;
+    }
+
     @Override
     public String toString() {
         return "Hostel{" +
@@ -261,6 +277,7 @@ public class Hostel {
                 ", managerId=" + managerId +
                 ", isVerified=" + isVerified +
                 ", createdAt=" + createdAt +
+                ", distance=" + distance +
                 ", imagesBase64=" + (imagesBase64 != null ? imagesBase64.size() + " images" : "null") +
                 '}';
     }
