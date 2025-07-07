@@ -45,6 +45,11 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String role; // e.g., "ROLE_STUDENT", "ROLE_MANAGER", "ROLE_ADMIN"
 
+    
+    @Size(min = 2, max = 100, message = "University name must be between 2 and 100 characters")
+    @Column(name = "university", nullable = false)
+    private String university;
+
     @CreationTimestamp
     @Column(name = "registered_at", updatable = false)
     private LocalDateTime registeredAt;
@@ -52,12 +57,13 @@ public class User implements UserDetails {
     // Default constructor
     public User() {}
 
-    public User(String fullName, String email, String phoneNumber, String password, String role) {
+    public User(String fullName, String email, String phoneNumber, String password, String role, String university) {
         this.fullName = fullName;
         this.email = email;
         this.phoneNumber = phoneNumber;
         this.password = password;
         this.role = role;
+        this.university = university;
     }
 
     // Getters and Chainable Setters
@@ -116,6 +122,15 @@ public class User implements UserDetails {
         return this;
     }
 
+    public String getUniversity() {
+        return university;
+    }
+
+    public User setUniversity(String university) {
+        this.university = university;
+        return this;
+    }
+
     public LocalDateTime getRegisteredAt() {
         return registeredAt;
     }
@@ -169,6 +184,7 @@ public class User implements UserDetails {
                 ", email='" + email + '\'' +
                 ", phoneNumber='" + phoneNumber + '\'' +
                 ", role='" + role + '\'' +
+                ", university='" + university + '\'' +
                 ", registeredAt=" + registeredAt +
                 '}';
     }

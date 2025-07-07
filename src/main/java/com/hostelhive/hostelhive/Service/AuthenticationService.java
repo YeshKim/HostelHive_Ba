@@ -28,15 +28,15 @@ public class AuthenticationService {
 
     public User signup(RegisterUserDto input) {
         User user = new User()
-                .setFullName(input.getFullName())
-                .setEmail(input.getEmail())
-                .setPassword(passwordEncoder.encode(input.getPassword()))
-                .setPhoneNumber(input.getPhoneNumber())
-                .setRole(input.getRole());
+            .setFullName(input.getFullName())
+            .setEmail(input.getEmail())
+            .setPassword(passwordEncoder.encode(input.getPassword()))
+            .setPhoneNumber(input.getPhoneNumber())
+            .setRole(input.getRole())
+            .setUniversity(input.getUniversity());
 
         return userRepo.save(user);
     }
-
 
     public User authenticate(LoginUserDto input) {
         authenticationManager.authenticate(

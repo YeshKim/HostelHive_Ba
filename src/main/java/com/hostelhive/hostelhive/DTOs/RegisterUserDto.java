@@ -6,18 +6,20 @@ public class RegisterUserDto {
     private String fullName;
     private String phoneNumber;
     private String role;
+    private String university;
 
     // No-arg constructor
     public RegisterUserDto() {
     }
 
     // All-args constructor
-    public RegisterUserDto(String email, String password, String fullName, String phoneNumber, String role) {
+    public RegisterUserDto(String email, String password, String fullName, String phoneNumber, String role, String university) {
         this.email = email;
         this.password = password;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
         this.role = role;
+        this.university = university;
     }
 
     // Getters and Setters
@@ -64,6 +66,15 @@ public class RegisterUserDto {
 
     public RegisterUserDto setRole(String role) {
         this.role = role;
+        return this;
+    }
+
+    public String getUniversity() {
+        return university;
+    }
+
+    public RegisterUserDto setUniversity(String university) {
+        this.university = university;
         return this;
     }
 }

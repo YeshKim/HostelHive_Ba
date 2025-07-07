@@ -191,6 +191,29 @@ public class HostelController {
         }
     }
 
+    // Approve a hostel
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<?> approveHostel(@PathVariable Long id) {
+        try {
+            Optional<Hostel> existingHostel = hostelService.findById(id);
+            if (!existingHostel.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Hostel not found");
+            }
+
+            Hostel hostel = existingHostel.get();
+            if (hostel.getIsVerified()) {
+                return ResponseEntity.badRequest().body("Hostel is already verified");
+            }
+
+            hostel.setIsVerified(true);
+            Hostel updatedHostel = hostelService.save(hostel);
+            return ResponseEntity.ok(updatedHostel);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error approving hostel: " + e.getMessage());
+        }
+    }
+
     // Delete a hostel
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteHostel(@PathVariable Long id) {
@@ -204,6 +227,25 @@ public class HostelController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error deleting hostel: " + e.getMessage());
+        }
+    }
+ // Get hostels by price range
+    @GetMapping("/price")
+    public ResponseEntity<?> getHostelsByPriceRange(
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
+        try {
+            List<Hostel> hostels;
+            if (minPrice != null && maxPrice != null) {
+                hostels = hostelService.findByPriceRange(minPrice, maxPrice);
+          
+            } else {
+                return ResponseEntity.badRequest().body("At least one of minPrice or maxPrice is required");
+            }
+            return ResponseEntity.ok(hostels);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving hostels by price: " + e.getMessage());
         }
     }
 
