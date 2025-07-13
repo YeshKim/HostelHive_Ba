@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -229,7 +230,8 @@ public class HostelController {
                     .body("Error deleting hostel: " + e.getMessage());
         }
     }
- // Get hostels by price range
+
+    // Get hostels by price range
     @GetMapping("/price")
     public ResponseEntity<?> getHostelsByPriceRange(
             @RequestParam(required = false) Double minPrice,
@@ -238,7 +240,6 @@ public class HostelController {
             List<Hostel> hostels;
             if (minPrice != null && maxPrice != null) {
                 hostels = hostelService.findByPriceRange(minPrice, maxPrice);
-          
             } else {
                 return ResponseEntity.badRequest().body("At least one of minPrice or maxPrice is required");
             }
@@ -258,6 +259,33 @@ public class HostelController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error retrieving hostels: " + e.getMessage());
+        }
+    }
+
+    // Search hostels by location and optional price range
+    @GetMapping("/search")
+    public ResponseEntity<?> searchHostels(
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
+        try {
+            if (location == null || location.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Location is required");
+            }
+            List<Hostel> hostels = hostelService.findByFilters(
+                    minPrice,
+                    maxPrice,
+                    null, // roomTypes
+                    null, // amenities
+                    0L,   // amenitiesSize
+                    null, // minDistance
+                    null, // maxDistance
+                    location
+            );
+            return ResponseEntity.ok(hostels);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error searching hostels: " + e.getMessage());
         }
     }
 

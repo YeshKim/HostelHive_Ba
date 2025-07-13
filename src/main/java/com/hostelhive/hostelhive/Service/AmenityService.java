@@ -20,4 +20,9 @@ public class AmenityService {
     public List<Amenity> findByNames(List<String> names) {
         return amenityRepo.findByNameIn(names);
     }
+
+	public static List<Amenity> findAll() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

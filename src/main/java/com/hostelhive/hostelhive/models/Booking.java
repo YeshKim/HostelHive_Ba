@@ -14,23 +14,23 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Student ID is required")
+   
     @Column(name = "student_id", nullable = false)
     private Long studentId;
 
-    @NotNull(message = "Room ID is required")
+    
     @Column(name = "room_id", nullable = false)
     private Long roomId;
 
-    @NotNull(message = "Start date is required")
+   
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @NotNull(message = "End date is required")
+    
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    @NotNull(message = "Status is required")
+  
     @Column(name = "status", nullable = false)
     private String status;
 

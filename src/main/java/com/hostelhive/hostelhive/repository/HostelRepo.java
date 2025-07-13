@@ -51,14 +51,14 @@ public interface HostelRepo extends JpaRepository<Hostel, Long> {
 
     List<Hostel> findByDistanceBetween(Double minDistance, Double maxDistance);
 
-    // Updated combined filter query
+    // Updated combined filter query with case-insensitive location search
     @Query("SELECT h FROM Hostel h JOIN h.amenities a WHERE " +
            "(:minPrice IS NULL OR h.pricePerMonth >= :minPrice) AND " +
            "(:maxPrice IS NULL OR h.pricePerMonth <= :maxPrice) AND " +
            "(:roomTypes IS NULL OR h.roomType IN :roomTypes) AND " +
            "(:minDistance IS NULL OR h.distance >= :minDistance) AND " +
            "(:maxDistance IS NULL OR h.distance <= :maxDistance) AND " +
-           "(:location IS NULL OR h.location LIKE %:location%) AND " +
+           "(:location IS NULL OR LOWER(h.location) LIKE LOWER(CONCAT('%', :location, '%'))) AND " +
            "(:amenities IS NULL OR a.name IN :amenities) " +
            "GROUP BY h HAVING (:amenities IS NULL OR COUNT(DISTINCT a) = :amenitiesSize)")
     List<Hostel> findByFilters(@Param("minPrice") Double minPrice,

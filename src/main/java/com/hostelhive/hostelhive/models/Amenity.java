@@ -5,12 +5,17 @@ import lombok.Data;
 
 @Entity
 @Table(name = "amenities")
-@Data
-public class Amenity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
-    @Column(name = "name", nullable = false, unique = true)
-    private String name;
+public class Amenity {
+ @Id
+ @GeneratedValue(strategy = GenerationType.IDENTITY)
+ private Long id;
+ 
+ private String name; // Make sure this field exists and has getter/setter
+ 
+ // Getters and setters
+ public String getName() { return name; }
+ public void setName(String name) { this.name = name; }
 }
+
+

@@ -3,6 +3,8 @@ package com.hostelhive.hostelhive.Service;
 import com.hostelhive.hostelhive.models.Booking;
 import com.hostelhive.hostelhive.repository.BookingRepo;
 import com.hostelhive.hostelhive.exceptions.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +15,7 @@ import java.util.List;
 @Service
 @Transactional
 public class BookingService {
+    private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
     private final BookingRepo bookingRepo;
 
     @Autowired
@@ -20,22 +23,18 @@ public class BookingService {
         this.bookingRepo = bookingRepo;
     }
 
-    /**
-     * Create a new booking
-     * @param booking the booking details
-     * @return the created booking
-     * @throws IllegalArgumentException if dates are invalid or required fields are missing
-     */
     public Booking createBooking(Booking booking) {
-        if (booking.getStudentId() == null || booking.getRoomId() == null ||
-            booking.getStartDate() == null || booking.getEndDate() == null || booking.getStatus() == null) {
-            throw new IllegalArgumentException("All required fields (studentId, roomId, startDate, endDate, status) must be provided");
-        }
+        logger.debug("Creating booking: studentId={}, roomId={}, startDate={}, endDate={}, status={}",
+                booking.getStudentId(), booking.getRoomId(), booking.getStartDate(), booking.getEndDate(), booking.getStatus());
         if (booking.getStartDate().isAfter(booking.getEndDate())) {
             throw new IllegalArgumentException("Start date must be before end date");
         }
         return bookingRepo.save(booking);
     }
+
+    // Other methods remain unchanged
+    // ...
+
 
     /**
      * Get booking by ID
