@@ -71,7 +71,6 @@ public class MpesaService {
     }
 
     public String initiateB2CDisbursement(String phoneNumber, double amount, String remarks) {
-        // Implement B2C API call (e.g., https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest)
         String b2cUrl = "https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest";
         String requestPayload = createB2CRequestPayload(phoneNumber, amount, remarks);
         String accessToken = "Bearer " + getAccessToken();
@@ -158,7 +157,7 @@ public class MpesaService {
                 + "}";
     }
 
-    private String getAccessToken() {
+    public String getAccessToken() {
         String tokenUrl = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
         HttpHeaders headers = new HttpHeaders();
         headers.setBasicAuth(consumerKey, consumerSecret);
@@ -184,10 +183,14 @@ public class MpesaService {
         return sdf.format(new Date());
     }
 
-    private Map<String, String> generatePassword() {
+    public Map<String, String> generatePassword() {
         String timestamp = getCurrentTimestamp();
         String password = shortcode.trim() + passKey.trim() + timestamp;
         String encodedPassword = Base64.getEncoder().encodeToString(password.getBytes());
         return new HashMap<>(Map.of("timestamp", timestamp, "password", encodedPassword));
+    }
+
+    public String getShortcode() {
+        return shortcode;
     }
 }

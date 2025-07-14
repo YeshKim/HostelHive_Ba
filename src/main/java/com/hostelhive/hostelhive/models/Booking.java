@@ -14,25 +14,32 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-   
     @Column(name = "student_id", nullable = false)
     private Long studentId;
 
-    
     @Column(name = "room_id", nullable = false)
     private Long roomId;
 
-   
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-  
+    @Column(nullable = false)
+    private Long hostelId;
+
     @Column(name = "status", nullable = false)
     private String status;
+
+    @Column(name = "check_in")
+    private LocalDateTime checkIn;
+
+    @Column(name = "check_out")
+    private LocalDateTime checkOut;
+
+    @Column(name = "special_requests", length = 500)
+    private String specialRequests;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -42,12 +49,16 @@ public class Booking {
     public Booking() {}
 
     // Constructor with required fields
-    public Booking(Long studentId, Long roomId, LocalDate startDate, LocalDate endDate, String status) {
+    public Booking(Long studentId, Long roomId, Long hostelId, LocalDate startDate, LocalDate endDate, String status, LocalDateTime checkIn, LocalDateTime checkOut, String specialRequests) {
         this.studentId = studentId;
         this.roomId = roomId;
+        this.hostelId = hostelId;
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = status;
+        this.checkIn = checkIn;
+        this.checkOut = checkOut;
+        this.specialRequests = specialRequests;
     }
 
     // Getters and Setters
@@ -75,6 +86,14 @@ public class Booking {
         this.roomId = roomId;
     }
 
+    public Long getHostelId() {
+        return hostelId;
+    }
+
+    public void setHostelId(Long hostelId) {
+        this.hostelId = hostelId;
+    }
+
     public LocalDate getStartDate() {
         return startDate;
     }
@@ -99,6 +118,30 @@ public class Booking {
         this.status = status;
     }
 
+    public LocalDateTime getCheckIn() {
+        return checkIn;
+    }
+
+    public void setCheckIn(LocalDateTime checkIn) {
+        this.checkIn = checkIn;
+    }
+
+    public LocalDateTime getCheckOut() {
+        return checkOut;
+    }
+
+    public void setCheckOut(LocalDateTime checkOut) {
+        this.checkOut = checkOut;
+    }
+
+    public String getSpecialRequests() {
+        return specialRequests;
+    }
+
+    public void setSpecialRequests(String specialRequests) {
+        this.specialRequests = specialRequests;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -113,9 +156,13 @@ public class Booking {
                 "id=" + id +
                 ", studentId=" + studentId +
                 ", roomId=" + roomId +
+                ", hostelId=" + hostelId +
                 ", startDate=" + startDate +
                 ", endDate=" + endDate +
                 ", status='" + status + '\'' +
+                ", checkIn=" + checkIn +
+                ", checkOut=" + checkOut +
+                ", specialRequests='" + specialRequests + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
     }

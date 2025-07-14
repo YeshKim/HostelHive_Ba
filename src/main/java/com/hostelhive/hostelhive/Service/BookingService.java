@@ -134,4 +134,28 @@ public class BookingService {
     public List<Booking> getBookingsByStudentIdAndStatus(Long studentId, String status) {
         return bookingRepo.findByStudentIdAndStatus(studentId, status);
     }
+    public List<Booking> getBookingsByHostelId(Long hostelId) {
+        return bookingRepo.findByHostelId(hostelId);
+    }
+
+    public List<Booking> getBookingsByHostelIdAndStatus(Long hostelId, String status) {
+        return bookingRepo.findByHostelIdAndStatus(hostelId, status);
+    }
+    public Booking updateBookingStatus(Long id, String status) {
+        Booking booking = bookingRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
+        
+        // Validate status
+        if (!isValidStatus(status)) {
+            throw new IllegalArgumentException("Invalid status: " + status);
+        }
+        
+        booking.setStatus(status);
+        return bookingRepo.save(booking);
+    }
+
+    private boolean isValidStatus(String status) {
+        return status.equals("PENDING") || status.equals("CONFIRMED") || 
+               status.equals("CANCELLED") || status.equals("EXPIRED");
+    }
 }

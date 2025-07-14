@@ -208,16 +208,40 @@ public class PaymentController {
             logger.info("M-Pesa Transaction Details - Phone: {}, Amount: {}, Receipt: {}, MerchantRequestID: {}",
                         phoneNumber, amount, transactionId, merchantRequestId);
 
-            String status = (resultCode == 0) ? "COMPLETED" : "FAILED";
-            // Find Payment by merchantRequestId or checkoutRequestId (requires repository method)
-            // For now, log and handle manually
-            logger.info("M-Pesa Transaction status: {}, merchantRequestId: {}, resultCode: {}",
-                        status, merchantRequestId, resultCode);
+            String status = (resultCode == 0) ? "ACTIVE" : "FAILED";
+            paymentService.handleCallback(checkoutRequestId, transactionId, status);
 
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             logger.error("Error handling payment callback: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/query-stk")
+    @PermitAll
+    public ResponseEntity<String> queryStkPush(@RequestBody Map<String, String> queryRequest) {
+        try {
+            String checkoutRequestId = queryRequest.get("CheckoutRequestID");
+            if (checkoutRequestId == null) {
+                logger.error("CheckoutRequestID is required");
+                return ResponseEntity.badRequest().body("{\"message\":\"CheckoutRequestID is required\"}");
+            }
+
+            Map<String, String> passwordData = paymentService.getMpesaService().generatePassword();
+            String response = paymentService.queryStkPush(
+                    paymentService.getMpesaService().getShortcode(),
+                    passwordData.get("password"),
+                    passwordData.get("timestamp"),
+                    checkoutRequestId
+            );
+
+            logger.info("STK push query successful: {}", response);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error querying STK push: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"message\":\"" + e.getMessage() + "\"}");
         }
     }
 }

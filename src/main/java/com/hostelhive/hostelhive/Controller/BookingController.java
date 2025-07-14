@@ -53,8 +53,6 @@ public class BookingController {
         }
     }
 
-   
-
     // Get booking by ID
     @GetMapping("/{id}")
     public ResponseEntity<Booking> getBookingById(@PathVariable Long id) {
@@ -74,6 +72,26 @@ public class BookingController {
     public ResponseEntity<Booking> updateBooking(@PathVariable Long id, @Valid @RequestBody Booking booking) {
         Booking updatedBooking = bookingService.updateBooking(id, booking);
         return new ResponseEntity<>(updatedBooking, HttpStatus.OK);
+    }
+
+    // Update booking status only (PATCH endpoint for status changes)
+    @PatchMapping("/{id}")
+    public ResponseEntity<Booking> updateBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> updates) {
+        try {
+            String status = updates.get("status");
+            if (status == null) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+            
+            Booking updatedBooking = bookingService.updateBookingStatus(id, status);
+            return new ResponseEntity<>(updatedBooking, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid status update: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            logger.error("Error updating booking status: {}", e.getMessage(), e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     // Delete booking
@@ -97,6 +115,18 @@ public class BookingController {
         return new ResponseEntity<>(bookings, HttpStatus.OK);
     }
 
+    // Get bookings by hostel ID 
+    @GetMapping("/hostel/{hostelId}")
+    public ResponseEntity<List<Booking>> getBookingsByHostelId(@PathVariable Long hostelId) {
+        try {
+            List<Booking> bookings = bookingService.getBookingsByHostelId(hostelId);
+            return new ResponseEntity<>(bookings, HttpStatus.OK);
+        } catch (Exception e) {
+            logger.error("Error fetching bookings for hostel {}: {}", hostelId, e.getMessage(), e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // Get active bookings
     @GetMapping("/active")
     public ResponseEntity<List<Booking>> getActiveBookings() {
@@ -111,5 +141,19 @@ public class BookingController {
             @RequestParam String status) {
         List<Booking> bookings = bookingService.getBookingsByStudentIdAndStatus(studentId, status);
         return new ResponseEntity<>(bookings, HttpStatus.OK);
+    }
+
+    // Get bookings by hostel ID and status
+    @GetMapping("/hostel/{hostelId}/status")
+    public ResponseEntity<List<Booking>> getBookingsByHostelIdAndStatus(
+            @PathVariable Long hostelId,
+            @RequestParam String status) {
+        try {
+            List<Booking> bookings = bookingService.getBookingsByHostelIdAndStatus(hostelId, status);
+            return new ResponseEntity<>(bookings, HttpStatus.OK);
+        } catch (Exception e) {
+            logger.error("Error fetching bookings for hostel {} with status {}: {}", hostelId, status, e.getMessage(), e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
