@@ -12,7 +12,11 @@ public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "receipt_number", nullable = true)
+    private String receiptNumber;
 
+    public String getReceiptNumber() { return receiptNumber; }
+    public void setReceiptNumber(String receiptNumber) { this.receiptNumber = receiptNumber; }
     @NotNull(message = "Booking ID is required")
     @Column(name = "booking_id", nullable = false)
     private Long bookingId;

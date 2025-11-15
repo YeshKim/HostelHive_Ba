@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/bookings")
 public class BookingController {
+
     private static final Logger logger = LoggerFactory.getLogger(BookingController.class);
     private final BookingService bookingService;
 
@@ -28,9 +30,15 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
+    // -------------------------------------------------
+    // CREATE BOOKING – now protected for students only
+    // -------------------------------------------------
     @PostMapping
-    public ResponseEntity<?> createBooking(@Valid @RequestBody Booking booking, BindingResult result) {
+    @PreAuthorize("hasRole('STUDENT')")               // NEW
+    public ResponseEntity<?> createBooking(@Valid @RequestBody Booking booking,
+                                          BindingResult result) {
         logger.info("Received booking request: {}", booking);
+
         if (result.hasErrors()) {
             List<String> errors = result.getAllErrors().stream()
                     .map(ObjectError::getDefaultMessage)
@@ -38,6 +46,7 @@ public class BookingController {
             logger.warn("Validation errors: {}", errors);
             return new ResponseEntity<>(Map.of("errors", errors), HttpStatus.BAD_REQUEST);
         }
+
         try {
             Booking createdBooking = bookingService.createBooking(booking);
             return new ResponseEntity<>(createdBooking, HttpStatus.CREATED);
@@ -74,22 +83,27 @@ public class BookingController {
         return new ResponseEntity<>(updatedBooking, HttpStatus.OK);
     }
 
-    // Update booking status only (PATCH endpoint for status changes)
-    @PatchMapping("/{id}")
-    public ResponseEntity<Booking> updateBookingStatus(@PathVariable Long id, @RequestBody Map<String, String> updates) {
+
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Booking> updateBookingStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> updates) {
+        
         try {
             String status = updates.get("status");
-            if (status == null) {
+            if (status == null || status.isBlank()) {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
-            
+
             Booking updatedBooking = bookingService.updateBookingStatus(id, status);
             return new ResponseEntity<>(updatedBooking, HttpStatus.OK);
+
         } catch (IllegalArgumentException e) {
-            logger.error("Invalid status update: {}", e.getMessage());
+            logger.warn("Invalid status request for booking {}: {}", id, e.getMessage());
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
-            logger.error("Error updating booking status: {}", e.getMessage(), e);
+            logger.error("Unexpected error updating booking status", e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

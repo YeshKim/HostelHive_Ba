@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
-
+import org.springframework.http.MediaType;
 @CrossOrigin
 @RestController
 @RequestMapping("/api/payments")
@@ -86,28 +86,37 @@ public class PaymentController {
         }
     }
 
-    @PostMapping("/initiate")
+    @PostMapping(value = "/initiate", produces = "application/json")
     @PermitAll
     public ResponseEntity<String> initiateStudentPayment(@RequestBody PaymentRequest paymentRequest) {
         try {
-            logger.info("Initiating payment for bookingId: {}, phone: {}, amount: {}", 
-                        paymentRequest.getBookingId(), 
-                        paymentRequest.getPhoneNumber(), 
+            logger.info("Initiating payment for bookingId: {}, phone: {}, amount: {}",
+                        paymentRequest.getBookingId(),
+                        paymentRequest.getPhoneNumber(),
                         paymentRequest.getAmount());
 
             if (paymentRequest.getBookingId() == null) {
-                logger.error("No bookingId provided in payment request");
-                return ResponseEntity.badRequest().body("{\"message\":\"Booking ID is required\"}");
+                return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"message\":\"Booking ID is required\"}");
             }
 
-            String response = paymentService.initiateStudentPayment(paymentRequest.getBookingId(), 
-                                                                  paymentRequest.getPhoneNumber(), 
-                                                                  paymentRequest.getAmount());
-            logger.info("Payment initiated successfully: {}", response);
-            return ResponseEntity.ok(response);
+            String response = paymentService.initiateStudentPayment(
+                paymentRequest.getBookingId(),
+                paymentRequest.getPhoneNumber(),
+                paymentRequest.getAmount()
+            );
+
+            logger.info("M-Pesa STK Push Response: {}", response);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(response);   // ← 200 + JSON
+
         } catch (Exception e) {
-            logger.error("Error initiating payment: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"message\":\"" + e.getMessage() + "\"}");
+            logger.error("Error initiating payment", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
@@ -173,47 +182,54 @@ public class PaymentController {
     public ResponseEntity<Void> handlePaymentCallback(@RequestBody(required = false) StkResultBody callbackData) {
         try {
             logger.info("M-Pesa Callback received: {}", callbackData);
-            if (callbackData == null || callbackData.getBody() == null || callbackData.getBody().getStkCallback() == null) {
-                logger.error("Invalid M-Pesa callback received: null or missing required data");
+
+            // Validate callback structure
+            if (callbackData == null 
+                || callbackData.getBody() == null 
+                || callbackData.getBody().getStkCallback() == null) {
+                logger.error("Invalid M-Pesa callback: missing body or stkCallback");
                 return ResponseEntity.badRequest().build();
             }
 
             StkCallback callback = callbackData.getBody().getStkCallback();
-            String resultDesc = callback.getResultDesc();
             int resultCode = callback.getResultCode();
-            String merchantRequestId = callback.getMerchantRequestID();
+            String resultDesc = callback.getResultDesc();
             String checkoutRequestId = callback.getCheckoutRequestID();
+            String merchantRequestId = callback.getMerchantRequestID();
 
-            logger.info("M-Pesa Result Description: {}, CheckoutRequestID: {}", resultDesc, checkoutRequestId);
+            logger.info("M-Pesa Result: Code={}, Desc={}, CheckoutID={}", 
+                        resultCode, resultDesc, checkoutRequestId);
+
+            // Extract metadata
+            String receiptNumber = null;
+            double amount = 0.0;
+            String phoneNumber = "";
 
             CallbackMetadata metadata = callback.getCallbackMetadata();
-            String phoneNumber = "";
-            double amount = 0.0;
-            String transactionId = null;
-
             if (metadata != null && metadata.getItems() != null) {
-                logger.info("M-Pesa Callback Metadata:");
                 for (ItemDTO item : metadata.getItems()) {
-                    logger.info("  - {}: {}", item.getName(), item.getValue());
-                    if ("PhoneNumber".equals(item.getName())) {
-                        phoneNumber = item.getValue();
-                    } else if ("Amount".equals(item.getName())) {
-                        amount = Double.parseDouble(item.getValue());
-                    } else if ("MpesaReceiptNumber".equals(item.getName())) {
-                        transactionId = item.getValue();
+                    logger.info("  Metadata → {}: {}", item.getName(), item.getValue());
+                    switch (item.getName()) {
+                        case "MpesaReceiptNumber" -> receiptNumber = item.getValue();
+                        case "Amount" -> amount = Double.parseDouble(item.getValue());
+                        case "PhoneNumber" -> phoneNumber = item.getValue();
                     }
                 }
             }
 
-            logger.info("M-Pesa Transaction Details - Phone: {}, Amount: {}, Receipt: {}, MerchantRequestID: {}",
-                        phoneNumber, amount, transactionId, merchantRequestId);
+            logger.info("Transaction Summary → Phone: {}, Amount: {}, Receipt: {}, MerchantID: {}",
+                        phoneNumber, amount, receiptNumber, merchantRequestId);
 
+            // Determine status
             String status = (resultCode == 0) ? "ACTIVE" : "FAILED";
-            paymentService.handleCallback(checkoutRequestId, transactionId, status);
+
+            // Pass receipt number (can be null if failed)
+            paymentService.handleCallback(checkoutRequestId, receiptNumber, status);
 
             return ResponseEntity.ok().build();
+
         } catch (Exception e) {
-            logger.error("Error handling payment callback: {}", e.getMessage(), e);
+            logger.error("Error in handlePaymentCallback", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
