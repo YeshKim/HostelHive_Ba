@@ -234,7 +234,7 @@ public class PaymentController {
         }
     }
 
-    @PostMapping("/query-stk")
+    @PostMapping("/query-checkout")
     @PermitAll
     public ResponseEntity<String> queryStkPush(@RequestBody Map<String, String> queryRequest) {
         try {
